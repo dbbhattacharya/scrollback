@@ -1,13 +1,5 @@
 @import "grid";
 
-.card-container {
-	padding: .5em;
-	max-width: 96em;
-	margin: 0 auto;
-
-	@media only screen and (min-width: 50em) { padding: 1em; }
-}
-
 .card-item-wrap {
 	display: inline-block;
 	width: 100%;

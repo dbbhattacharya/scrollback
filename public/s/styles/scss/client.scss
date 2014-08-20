@@ -573,6 +573,45 @@ body {
     color: $dark-color;
 }
 
+.home-header-wrap {
+    color: $light-color;
+    background-color: $dark-color;
+    background-image: url(../../img/client/cover.jpg);
+    background-size: 100%;
+    background-size: cover;
+    background-position: center;
+}
+
+.home-header, .card-container {
+    max-width: $width-home;
+    margin: 0 auto;
+}
+
+.home-header {
+    @include flexbox;
+    @include flex-direction(row);
+    @include flex-wrap(nowrap);
+    @include justify-content(space-between);
+    @include align-items(center);
+    @include align-content(center);
+
+    padding: 3em 1em;
+
+    @media #{$screenxxx} { padding: 5em 3em 5em 2em; }
+
+    .sb-avatar { border-radius: $roundness; }
+
+    .home-header-left { float: left; }
+
+    .home-header-right { float: right; }
+}
+
+.card-container {
+    padding: .5em;
+
+    @media #{$screenxxx} { padding: 1em; }
+}
+
 .meta-button, .rooms-button {
     width: 3em;
     cursor: pointer;

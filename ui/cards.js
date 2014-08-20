@@ -2,6 +2,8 @@
 /* global $ */
 
 $(function() {
+	var $cardContainer = $(".card-container");
+
 	function setCard(cardObj) {
 		var attrs = [],
 			events = [],
@@ -12,15 +14,9 @@ $(function() {
 			return;
 		}
 
-		if (!cardObj.id) {
-			cardObj.id = "card-" + new Date().getTime();
-		} else {
-			$card = $("#" + cardObj.id);
-		}
+		cardObj.id = cardObj.id || "card-" + new Date().getTime();
 
-		if (!($card.length && $card.hasClass("card-item"))) {
-			$card = $("<div>").attr("id", cardObj.id);
-		}
+		$card = $("<div>").attr("id", cardObj.id);
 
 		for (var i in cardObj) {
 			if (typeof cardObj[i] === "string") {
@@ -72,16 +68,36 @@ $(function() {
 		return $card;
 	}
 
+	function updateCard(cardObj) {
+		var $oldCard, $newCard;
+
+		if (!(cardObj && $cardContainer.length)) {
+			return;
+		}
+
+		$newCard = setCard(cardObj);
+
+		if (cardObj.id) {
+			$oldCard = $("#" + cardObj.id);
+		}
+
+		if ($oldCard && $oldCard.length && $oldCard.hasClass("card-item")) {
+			$oldCard.replaceWith($newCard);
+		} else {
+			$cardContainer.append($("<div class='card-item-wrap'></div>").append($newCard));
+		}
+
+		return $newCard;
+	}
+
 	function randomStr(n) {
 		var str = (Math.random() + 1).toString(36).substring(2, (n + 2));
 
 		return str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
-	var $newcard, $c;
-
 	for (var i = 0; i < 20; i++) {
-		$newcard = setCard({
+		updateCard({
 			id: randomStr(5),
 			className: "conv-" + Math.floor(Math.random() * 10),
 			onclick: function() { console.log("hi"); },
@@ -98,9 +114,6 @@ $(function() {
 				online: "<span class='card-actions-online-number'>124</span> people talking"
 			}
 		});
-
-		$c = $('<div class="card-item-wrap"></div>').append($newcard);
-		$c.appendTo(".card-container");
 	}
 
 	$("body").removeClass("mode-normal");
