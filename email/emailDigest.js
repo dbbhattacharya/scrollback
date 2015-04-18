@@ -1,14 +1,13 @@
 var config = require('../config.js');
 var log = require("../lib/logger.js");
-var db = require('../lib/mysql.js');
 var send = require('./sendEmail.js');
 var fs=require("fs"),jade = require("jade");
 var redis = require('../lib/redisProxy.js').select(config.redisDB.email);
 var core;
 var internalSession = Object.keys(config.whitelists)[0];
 var emailConfig = config.email, digestJade;
-var waitingTime1 = emailConfig.mentionEmailTimeout || 3 * 60 * 1000; //mention email timeout
-var waitingTime2 = emailConfig.regularEmailTimeout || 12 * 60 * 1000;//regular email timeout
+var waitingTime1 = emailConfig.mentionEmailTimeout || 3 * 60 * 60 * 1000; //mention email timeout
+var waitingTime2 = emailConfig.regularEmailTimeout || 12 * 60 * 60 *  1000;//regular email timeout
 var timeout = 30 * 1000;//for debuging only
 var debug = emailConfig.debug;
 
@@ -96,10 +95,10 @@ function trySendingToUsers() {
 						return;
 					}
 					if(!following.results || !following.results.length) {
-						log("username ", username ," is not following any rooms ");	
+						log("username ", username ," is not following any rooms ");
 						return;
 					}
-					rooms = [];
+					var rooms = [];
 					following.results.forEach(function(r) {
 						rooms.push(r.id);
 					});
@@ -165,7 +164,7 @@ function prepareEmailObject(username ,rooms, lastSent, callback) {
 				});
 				log("mentions returned from redis ", room ,mentions, lastSent);
 				var l = "email:label:" + room + ":labels";
-	
+
 				redis.zrangebyscore(l, lastSent, "+inf",  function(err,labels) {
 					if(emailConfig.debug) log("labels returned from redis" , labels);
 					roomsObj.labels = [];
@@ -479,7 +478,7 @@ function sendPeriodicMails(){
 		var users = data.results;
 		users.forEach(function(user) {
 			log("trying for user", user);
-			if (user.params && user.params.email && user.params.email.frequency !== "never") {//TODO write a query based on freq
+			if (user.params && (!user.params.email || user.params.email.frequency !== "never")) {//TODO write a query based on freq
 				initMailSending(user.id);
 			}
 		});
@@ -500,7 +499,7 @@ function sendPeriodicMails(){
 	core.emit("getUsers", {timezone: {gte: start2, lte: end2}, session: internalSession}, function(err, data) {
 		processResults(err, data);
 	});
-	
-	
-	
+
+
+
 }

@@ -11,7 +11,8 @@
 			getItems = options.getItems;
 
 		if(typeof getItems !== 'function') console.error("Infinite scroll requires a getItems callback.");
-
+        
+        $(this).data("options", options);
 		$(this).empty();
 		$(this).each(function() {
 			var $logs = $(this),
@@ -30,7 +31,7 @@
 				atTop = $logs.data("upper-limit");
 				atBottom = $logs.data("lower-limit");
 				scrollHeight = $logs.prop('scrollHeight');
-				startIndex = $logs.prop('index');
+				startIndex = $logs.data('index');
 			}
 
 			// Extend and contract the empty space as needed when scrolling.
@@ -50,7 +51,7 @@
 
 			function getGridColumns() {
 				var items = $items.children(), initLeft, i, l;
-				if(items.size() === 0) return 1;
+				if(items.length === 0) return 1;
 
 				initLeft = items.eq(0).offset().left;
 				for(i=1, l=items.size(); i<l && items.eq(i).offset().left != initLeft; i++);
@@ -209,10 +210,15 @@
 	}; /* end $.fn.infinite */
 
 	$.fn.reset = function(index) {
-		var $logs = $(this);
+		var $logs = $(this),
+            options = $logs.data("options");
+        
 		$logs.find(".infinite-items").empty();
-		$logs.data("lower-limit", false).removeClass("upper-limit");
-		$logs.data("upper-limit", false).removeClass("lower-limit");
+		$logs.data("lower-limit", false).children(".infinite-above").removeClass("upper-limit").height("inherit");
+		$logs.data("upper-limit", false).children(".infinite-below").removeClass("lower-limit").height("inherit");
+        
+        // try '', null instead of inherit, final option is options.scrollSpace;
+        
 		if(typeof index !== undefined) $logs.data("index", index);
 		$logs.scrollTop(($logs.prop('scrollHeight') - $logs.height())/2);
 		$logs.data("update-infinite")();

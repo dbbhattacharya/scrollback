@@ -1,16 +1,13 @@
 var config = require('../config.js');
 var log = require("../lib/logger.js");
-var db = require('../lib/mysql.js');
-var send = require('./sendEmail.js');
-var fs=require("fs"),jade = require("jade");
-var redis = require('../lib/redisProxy.js').select(config.redisDB.email);//TODO move this to config.
+var redis = require('../lib/redisProxy.js').select(config.redisDB.email);
 var emailDigest = require('./emailDigest.js');
 var initMailSending = emailDigest.initMailSending;//function
 var sendPeriodicMails = emailDigest.sendPeriodicMails;//function
 var trySendingToUsers = emailDigest.trySendingToUsers;//function.
+var internalSession = Object.keys(config.whitelists)[0];
 var emailConfig = config.email;
 var core;
-var debug = emailConfig.debug;
 var timeout = 30*1000;//for debuging only
 
 module.exports = function(coreObject) {
@@ -30,19 +27,6 @@ module.exports = function(coreObject) {
 			setInterval(sendPeriodicMails, timeout);
 			setInterval(trySendingToUsers,timeout/8);
 		}
-		core.on("user", function(data, callback) {
-			console.log("email user validation...");
-			var user = data.user; 
-			if (user.params.email && user.params.email.frequency && user.params.email.notifications) {
-				var fq = user.params.email.frequency === 'daily' || user.params.email.frequency === 'never' || user.params.email.frequency === 'weekly';
-				if(fq && typeof user.params.email.notifications === 'boolean') {
-					return callback();
-				}
-			}
-			log("Err email params in user object"); 
-			return callback(new Error("ERR_EMAIL_PARAMS"));
-			
-		}, "appLevelValidation");
 	}
 	else {
 		log("email module is not enabled");
@@ -70,7 +54,7 @@ function addMessage(message){
 			multi.zadd("email:label:" + room + ":labels" ,message.time , label); // email: roomname : labels is a sorted set
 			multi.incr("email:label:" + room + ":" + label + ":count");
 			multi.expire("email:label:" + room + ":" + label + ":count" , getExpireTime());
-			multi.set("email:label:" + room + ":" + label + ":title", title);
+			if(title) multi.set("email:label:" + room + ":" + label + ":title", title);
 			multi.expire("email:label:" + room + ":" + label + ":title" , getExpireTime());
 			multi.lpush("email:label:" + room + ":" + label +":tail", JSON.stringify(message));//last message of label
 			multi.ltrim("email:label:" + room + ":" + label +":tail", 0, 2);
@@ -85,14 +69,23 @@ function addMessage(message){
 					multi.sadd("email:mentions:" + room + ":" + username , JSON.stringify(message));//mentioned msg
 					multi.set("email:" + username + ":isMentioned", true);//mentioned indicator for username
 					multi.exec(function(err,replies) {
-						logMail("added mention ", replies);
+						log("added mention ", replies);
 						if (!err) {
-							initMailSending(username);
+                            core.emit("getUsers", {ref: username, session: internalSession}, function(err, r) {
+                                if(!err && r.results && r.results[0]) {
+                                    var user = r.results[0];
+                                    if(!user.params.email || (user.params.email && user.params.email.notifications)) {
+                                        log("sending mention email to user", username);
+                                        initMailSending(username);    
+                                    } else log("Not sending email to user ", username);
+                                }
+                            });
+							
 						}
 					});//mention is a set)
 				});
 			});
         }
-    }   
-    
+    }
+
 }

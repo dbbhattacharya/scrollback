@@ -6,16 +6,16 @@
 @import "entry";
 
 /* base styles */
-html { font-size: 62.5%; }
-
 body {
     background: $light-color;
     color: $dark-color;
-    font: #{$font-size}/($font-size * 1.5) $font-family-normal;
+    font: #{$font-size}/($font-line-height) $font-family-normal;
+
+    @media #{$mobile-break-point} { font-size: #{$font-size-mobile}; }
 }
 
 a {
-    @extend %ease;
+    @extend %transition;
 
     color: $link-color;
     text-decoration: none;
@@ -78,10 +78,8 @@ code {
 
 .fadeout {
     @include opacity(0);
-    @extend %ease;
+    @extend %transition;
 }
-
-%ease { @include transition; }
 
 /* browser specific styles */
 ::selection {

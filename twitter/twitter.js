@@ -15,7 +15,6 @@ var core;
 var expireTime = 15 * 60;//expireTime for twitter API key...
 var timeout  = 1000 * 60 ;//search Interval
 var maxTweets = 1;//max tweets to search in timeout inteval
-var currentConnections = {};
 var pendingOauths = {};
 var oauthTimeout = 15 * 60 * 60;//15 min
 module.exports = function(coreObj) {
@@ -23,9 +22,7 @@ module.exports = function(coreObj) {
 	if (config.twitter && config.twitter.consumerKey && config.twitter.consumerSecret) {
 		log("twitter app started");
 		if (!debug) {
-			process.nextTick(function(){
-				logTwitter = log.tag('twitter');
-			});
+			logTwitter = log.tag('twitter');
 		}
 		core = coreObj;
 		init();
@@ -49,25 +46,12 @@ module.exports = function(coreObj) {
 
 
 function twitterParamsValidation(action, callback) {
-    var room = action.room;
-	if (room.params.twitter) {
-		var t = room.params.twitter;
-        if(Object.keys(t).length === 0) return callback(); 
-		var b = typeof t.username === 'string' && typeof t.tags === 'string';
-		if (t.token) {
-			b = b && (typeof t.token === 'string');
-			b = b && (t.tokenSecret) && (typeof t.tokenSecret === 'string');
-			b = b && (typeof t.profile === 'object');
-			b = b && (t.profile.screen_name && typeof t.profile.screen_name === 'string');
-			b = b && (t.profile.user_id && typeof t.profile.user_id === 'string');
-		}
-		if (b) callback();
-		else {
-            t.error = "ERR_INVALID_TWITTER_PARAMS";
-//            callback(new Error("ERR_INVALID_TWITTER_PARAMS"));
-            callback();
-        }
-	} else callback();
+	for (var i = 0;i < action.room.identities.length;) { //remove all twitter identities
+		if(/^twitter/.test(action.room.identities[i])) {
+			action.room.identities.splice(i, 1);
+		} else i++;
+	}
+    callback();
 }
 
 
@@ -76,8 +60,7 @@ function twitterRoomHandler(action, callback) {
 	log("room twitter--", JSON.stringify(room));
 	if (room.params.twitter && room.params.twitter.username) {
 		addTwitterTokens(action, callback);
-	}
-	else {
+	} else {
 		callback();
 	}
 }
@@ -128,12 +111,6 @@ function addTwitterTokens(room, callback) {
 	});
 }
 function addIdentity(room, username) {
-	if(!room.room.identities) room.room.identities = [];
-	for (var i = 0;i < room.room.identities;i++) {
-		if (room.room.identities[i].indexOf("twitter") === 0) {
-			return;
-		}
-	}
 	room.room.identities.push("twitter://" + room.room.id + ":" + username);
 }
 
@@ -177,7 +154,7 @@ function init() {
  */
 function initTwitterSearch() {
 	log("getting room data....");
-	core.emit("getRooms",{identity:"twitter", session: internalSession}, function(err, data) {
+	core.emit("getRooms",{identity: "twitter", session: internalSession }, function(err, data) {
 		if (!err) {
 			if(debug) logTwitter("data returned from labelDB: ", JSON.stringify(data));
 			var rooms = data.results;
@@ -215,7 +192,7 @@ function fetchTweets(room) {
 						logTwitter("Error: ", err);
 					}
 					else {
-						logTwitter("var reply= ", JSON.stringify(reply));
+						//logTwitter("var reply= ", JSON.stringify(reply));
 						if (reply.statuses && reply.statuses[0] && !reply.statuses[0].retweeted && (reply.statuses[0].id + "") !== data) {
 							redis.set("twitter:lastTweetId:" + room.id, reply.statuses[0].id, function(err, data) {
 								logTwitter("added data to room...", err, data);
@@ -320,7 +297,7 @@ function getRequest(req, res, next) {
 							logTwitter("user data added: ", replies);
 						});
 					});
-					return res.render(__dirname + "/login.jade", {profile: {screen_name: results.screen_name}});
+					return res.render(__dirname + "/login.jade", {profile: { screen_name: results.screen_name }});
 				}
 			});
 			delete pendingOauths[ps[2]];
@@ -332,11 +309,11 @@ function getRequest(req, res, next) {
 
 }
 
-function deletePendingOAuths(args) {
+function deletePendingOAuths() {
 	for (var id in pendingOauths) {
 		if (pendingOauths.hasOwnProperty(id)) {
-			var t = new Date().getTime();
-			var pt = pendingOauths[id].time;
+			var t = new Date().getTime(),
+			     pt = pendingOauths[id].time;
 			if (t - pt >= oauthTimeout) {
 				log("deleting Pending oauth");
 				delete pendingOauths[id];
@@ -344,6 +321,4 @@ function deletePendingOAuths(args) {
 		}
 	}
 }
-
-
 /**** get request handler *******/

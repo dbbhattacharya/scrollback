@@ -1,6 +1,6 @@
 /* jslint browser: true */
 
-var core = Object.create(require("./lib/emitter.js"));
+var core = new (require("./lib/emitter.js"))();
 window.validate = require('./lib/validate.js');
 window.generate = require('./lib/generate');
 
@@ -9,5 +9,3 @@ require('./interface/interface-client')(core);
 require('./localStorage/localStorage-client')(core);
 require('./socket/socket-client')(core);
 require('./id-generator/id-generator-client.js');
-
-//# sourceMappingURL=libsb.js.map

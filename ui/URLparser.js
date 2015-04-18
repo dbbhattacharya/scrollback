@@ -1,13 +1,13 @@
 /* jshint browser: true */
 /* global $, libsb */
-
+var validate = require("../lib/validate.js");
 module.exports = function() {
 	$(function(){
 		var path  = window.location.pathname.substr(1),
 			search = window.location.search.substr(1),
 			state = {};
 
-		path = path.split("/");
+        path = path.split("/");
 		state.source = "init";
 
 		search.split("&").map(function(i) {
@@ -21,9 +21,7 @@ module.exports = function() {
 			}
 		});
 
-		if (state.query) {
-			state.mode = "search";
-		}
+		
 
 		if (state.time) {
 			state.time = new Date(state.time).getTime();
@@ -36,7 +34,7 @@ module.exports = function() {
 				state.mode = "home";
 			}
 		} else {
-			state.roomName = path[0].toLowerCase();
+			state.roomName =  validate(path[0], true);
 
 			if (path[1] == "edit") {
 				state.mode = "conf";
@@ -48,16 +46,20 @@ module.exports = function() {
 				}
 			}
 		}
+        
+        if (state.query) {
+			state.mode = "search";
+		}
 
-		if (state.embed === "toast" && state.minimize === "true") {
-			state.minimize = true;
-		} else {
-			state.minimize = false;
+		if (state.embed) {
+			state.embed = JSON.parse(decodeURIComponent(state.embed));
+
+			state.minimize = state.embed.minimize || false;
+			state.theme = state.embed.theme || "light";
 		}
 
 		if (!state.mode) state.mode = "normal";
 		if (!state.tab) state.tab = "people";
-		if (!state.theme) state.theme = "light";
 
 		libsb.emit("navigate", state);
 	});

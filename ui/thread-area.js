@@ -1,10 +1,8 @@
 /* jshint browser: true */
-/* global $, libsb, threadEl, currentState */
-/* exported chatArea */
+/* global $, libsb, currentState */
 
-var threadArea = {};
-
-
+var threadEl = require("./thread.js"),
+	threadArea = {};
 
 (function() {
 	var $threads, room = "", time = null,
@@ -54,7 +52,7 @@ var threadArea = {};
 				renderSearchResult(res, callback);
 			}
 
-			if(to<searchResult.length ) {
+			if(to<searchResult.length) {
 				return processResults(from, to);
 			}else if(searchResult.length<=1 || searchResult[searchResult.length-1]!== false){
 				query.pos = searchResult.length-1;
@@ -83,16 +81,15 @@ var threadArea = {};
 		if(before) query.before = index?before+1: before;
 
 		query.to =  room;
-		query.time = index;
+		query.time = index || null;
 		libsb.getThreads(query, function(err, t) {
 			var threads = t.results;
-
 			if(err) throw err; // TODO: handle the error properly.
-
-
+            
 			if(!index && threads.length === "0") {
 				return callback([false]);
 			}
+            console.log("Brrrrr");
 			if(!after) {
 				if(!t.time) {
 					threads.push(false);
@@ -109,12 +106,9 @@ var threadArea = {};
 					threads.push(false);
 				}
 			}
-
 			renderThreads(threads, callback);
 		});
 	}
-
-
 
 	libsb.on('navigate', function(state, next) {
 		var reset = false;
@@ -125,20 +119,19 @@ var threadArea = {};
 			$(".tab-"+state.tab).addClass("current");
 		}
 
-        if(state.roomName == "pending" && state.room === null) return next();
+        if(state.roomName && state.room === null) return next();
         if(state.source == 'thread-area') return next();
 
 		if(!state.old) {
 			room = state.roomName;
 			reset = true;
-		}else if(state.roomName && state.roomName != room) {
-            console.log("Setting the room");
+		} else if(state.roomName && state.roomName != room) {
 			room = state.roomName;
 			reset = true;
-		}else if(state.query) {
+		} else if(state.old && state.old.query != state.query) {
 			reset = true;
 			search = state.query || "";
-		}else if(state.tab != state.old.tab && state.tab == "threads") {
+		} else if(state.tab != state.old.tab && state.tab == "threads") {
 			reset = true;
 		}
 
@@ -179,33 +172,58 @@ var threadArea = {};
 		$threads.scroll();
 	};
 
-
 	$(function() {
         $threads = $(".thread-item-container");
 
 		$threads.infinite({
 			scrollSpace: 2000,
-			fillSpace: 500,
+			fillSpace: 1000,
 			itemHeight: 100,
 			startIndex: index,
 			getItems: function (index, before, after, recycle, callback) {
 				if(currentState.mode == "search") {
+                    $(".search-caption").text("Results for \"" + currentState.query + "\"");
+                    $(".search-back").text("Back to " + currentState.roomName);
+
                     loadSearchResult(index, before, after, callback);
 				}else if(currentState.tab == "threads") {
                     loadThread(index, before, after, callback);
 				}
 			}
 		});
+		libsb.on("init-dn", function(init, next) {
+			$threads.reset();
+			next();
+		}, 100);
 
+        $(".search-back").click(function(e) {
+            libsb.emit("navigate", {mode: "normal", tab: "threads", thread: "", q:"", time: null});
+            e.stopImmediatePropagation();
+        });
 		$threads.click(function(event) {
 			event.preventDefault();
 			var $el = $(event.target).closest('.thread-item');
-			if(!$el.size()) return;
-			libsb.emit('navigate', {source: 'thread-area', time: null, thread: $el.attr("id").split('-')[1] });
+			if(!$el.length) return;
+            libsb.emit('navigate', {source: 'thread-area', time: null, thread: $el.attr("id").split('-')[1] });
 		});
+
 		$(".thread-all-conversations").click(function(event){
 			event.preventDefault();
 			libsb.emit('navigate', {source: 'thread-area', time: null, thread: ""});
 		});
 	});
+
+	libsb.on('navigate', function(state, next) {
+		if (state.old && state.thread !== state.old.thread) {
+			$(".thread-item.current").removeClass("current");
+
+			if (state.thread) {
+				$("#thread-" + state.thread).addClass("current");
+			} else{
+				$('.thread-all-conversations').addClass('current');
+			}
+		}
+
+		next();
+	}, 1);
 })();

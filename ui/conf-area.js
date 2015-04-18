@@ -8,7 +8,7 @@ $(".configure-button").on("click", function () {
     libsb.emit('navigate', {
         mode: "conf",
         source: "configure-button",
-        room: window.currentState.roomName
+        roomName: window.currentState.roomName,
     });
 });
 
@@ -21,7 +21,8 @@ $(".conf-save").on("click", function () {
             id: window.currentState.roomName,
             description: '',
             identities: [],
-            params: {}
+            params: {},
+            guides: {}
         }, function (err, room) {
             var roomObj = {
                 to: currentState.roomName,
@@ -31,23 +32,23 @@ $(".conf-save").on("click", function () {
             libsb.emit('room-up', roomObj, function (err, room) {
                 self.removeClass("working");
                 self.attr("disabled", false);
-
                 if(err) {
                     // handle the error
                 } else {
                     for(var i in room.room.params) {
                         if(!room.room.params.hasOwnProperty(i)) continue;
                         if(room.room.params[i].error) {
-                            console.log("Error happed when saving the room", room.room);
                             return;
                         }
                     }
                     currentConfig = null;
                     $('.conf-area').empty();
-                    libsb.emit('navigate', { mode: "normal", tab: "info", source: "conf-save" });
+					
+        			libsb.emit('navigate', { mode: "normal", tab: "info", source: "conf-save" });
                 }
             });
         });
+		
     }
 });
 
@@ -64,56 +65,50 @@ $(".conf-cancel").on("click", function () {
 });
 
 
-function showConfig(room){
+function showConfig(room) {
     var roomObj = {room: room};
     libsb.emit('config-show', roomObj, function(err, tabs) {
-        var data;
-
-        delete tabs.room;
-
+		delete tabs.room;
         currentConfig = tabs;
-
-        data = renderSettings(tabs);
-
-        $('.meta-conf').empty().append(data[0]);
-        $('.conf-area').empty().append(data[1]);
+        renderSettings(tabs);
      });
 }
 
 libsb.on('navigate', function (state, next) {
-    var isOwner = false,
-        checkOwnerShip = function() {
+    var isOwner = false;
+
+    function cancelEdit() {
+        libsb.emit('navigate', {
+            mode: 'normal',
+            source: "conf-cancel"
+        });
+    }
+
+    function checkOwnerShip() {
+        if(libsb.memberOf) {
             libsb.memberOf.forEach(function (room) {
                 if (room.id == currentState.roomName && room.role == "owner") isOwner = true;
             });
-
-            if (isOwner === false) {
-                libsb.emit('navigate', {
-                    mode: 'normal'
-                });
-            }
-        };
-
-    if (state.mode === "conf") {
-        if (libsb.isInited) {
-            checkOwnerShip();
-        } else {
-            libsb.on('inited', function (d, next) {
-                checkOwnerShip();
-                next();
-            });
         }
 
-        if (!currentConfig) {
-            if (libsb.isInited) {
-                showConfig(state.room);
-            } else {
-                libsb.on('inited', function (e, n) {
-                    showConfig(state.room);
-                    if (n) n();
-                }, 500);
-            }
+        return isOwner;
+    }
+
+    if (state.old && state.old.mode !== state.mode && state.mode === "conf") {
+        if (!checkOwnerShip()) {
+            cancelEdit();
+            return next();
         }
+
+        libsb.getRooms({ref: currentState.roomName, hasMember: libsb.user.id, cachedRoom: false}, function(err, data) {
+            if(err || !data.results || !data.results.length) { // cachedRoom false will fetch the room from server directly.
+                //may be even show error.
+                cancelEdit();
+                return next();
+            }
+
+            showConfig(data.results[0]);
+        });
     }
 
     next();

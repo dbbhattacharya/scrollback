@@ -1,6 +1,7 @@
 var gen = require("../lib/generate.js");
 var guid = gen.uid;
 var log = require("../lib/logger.js");
+
 module.exports = function(clientEmitter, client, callbacks) {
 
 	function connectUser(roomId, user) {
@@ -14,8 +15,8 @@ module.exports = function(clientEmitter, client, callbacks) {
 			options: {identId: user + "@scrollback.io"}
 		});
 	}
-	
-	
+
+
 	function say(roomId, from, text) {
 		clientEmitter.emit('write', {
 			type: 'say',
@@ -26,7 +27,7 @@ module.exports = function(clientEmitter, client, callbacks) {
 			}
 		});
 	}
-	
+
 	function disconnectBot(roomId, callback) {
 		var uid = guid();
 		clientEmitter.emit('write', {
@@ -36,7 +37,7 @@ module.exports = function(clientEmitter, client, callbacks) {
 		});
 		if(callback) callbacks[uid] = callback;
 	}
-	
+
 	function disconnectUser(roomId, user) {
 		var uid = guid();
 		clientEmitter.emit('write', {
@@ -46,7 +47,7 @@ module.exports = function(clientEmitter, client, callbacks) {
 			nick: user
 		});
 	}
-	
+
 	/*new Request.*/
 	function addNewBot(r, callback) {
 		console.log("room irc Adding new bot for room :", r.id);
@@ -69,9 +70,16 @@ module.exports = function(clientEmitter, client, callbacks) {
 	 * Copy only roomId and IRC params.
 	 */
 	function copyRoomOnlyIrc(room) {
-		return {id: room.id, params: {irc: room.params.irc}};
+		return {id: room.id, params: {
+			irc: {
+				server: room.params.irc.server,
+				channel: room.params.irc.channel,
+				pending: room.params.irc.pending,
+				enabled: room.params.irc.enabled
+			}
+		}};
 	}
-	
+
 	function getBotNick(roomId, callback) {
 		var uid = guid();
 		if(client.connected()) {
@@ -85,8 +93,7 @@ module.exports = function(clientEmitter, client, callbacks) {
 			};
 		} else callback("ERR_NOT_CONNECTED");
 	}
-	
-	
+
 	function getRequest(req, res, next) {
 		var path = req.path.substring(7);// "/r/irc/"
 		log("path " , path , req.url );
@@ -94,7 +101,7 @@ module.exports = function(clientEmitter, client, callbacks) {
 		if (ps[0]) {//room name
 			getBotNick(ps[0], function(nick) {
 				log("nick for room :", ps[0], nick);
-				if (nick === "NO_ROOM") {//error 
+				if (!nick || typeof nick !== 'string' || nick === "NO_ROOM") {//error
 					next();//say invalid req(404)
 				} else {
 					res.write(nick);
@@ -102,6 +109,49 @@ module.exports = function(clientEmitter, client, callbacks) {
 				}
 			});
 		}
+	}
+    
+	function copyChannel(action) {
+		[action.room, action.old].forEach(function (r) {
+			if (r && r.params && r.params.irc && r.params.irc.channel) {
+				r.params.irc.tmpChannel = r.params.irc.channel;
+				r.params.irc.channel = r.params.irc.channel.toLowerCase();
+			}
+		});
+	}
+
+	function revertCopyChannel(action) {
+			[action.room, action.old].forEach(function (r) {
+			if (r && r.params && r.params.irc && r.params.irc.channel) {
+				r.params.irc.channel = r.params.irc.tmpChannel;
+				delete r.params.irc.tmpChannel;
+			}
+		});
+	}
+
+
+	/**
+	channel to lower case for both room and old
+	@returns {function}. to revert the changes
+	*/
+	function channelLowerCase(action, cb) {
+		copyChannel(action);
+		return function () {
+			revertCopyChannel(action);
+			var args = [];
+			for (var k in arguments) {
+				if (arguments.hasOwnProperty(k)) {
+					args.push(arguments[k]);
+				}
+			}
+			cb.apply(null, args);
+		};
+	}
+
+	function isActionReq(action) {
+		var rp = action.room.params;
+		return (rp && rp.irc && rp.irc.server && rp.irc.channel && !rp.irc.pending &&
+			(/^web/).test(action.session) && client.connected() && rp.irc.enabled && !rp.irc.error);	
 	}
 	
 	return {
@@ -112,6 +162,8 @@ module.exports = function(clientEmitter, client, callbacks) {
 		addNewBot: addNewBot,
 		copyRoomOnlyIrc: copyRoomOnlyIrc,
 		getBotNick: getBotNick,
-		getRequest: getRequest
+		getRequest: getRequest,
+		channelLowerCase: channelLowerCase,
+		isActionReq: isActionReq
 	};
 };

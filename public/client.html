@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<!--<html manifest="/manifest.appcache" lang="en">-->
-<html lang="en">
+<html manifest="/manifest.appcache" lang="en">
 	<head>
 		<meta charset="utf-8">
 
@@ -12,26 +11,46 @@
 
 		<title></title>
 
-		<!-- enable HTML5 in IE, we need to place it before body -->
-		<!--[if lt IE 9]>
-		<script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7/html5shiv.min.js"></script>
-		<script>window.html5 || document.write('<script src="/s/lib/html5shiv.min.js"><\/script>')</script>
-		<![endif]-->
+        <!-- gen Head Start -->
+
+        <!-- gen Head End -->
 
 		<link rel="shortcut icon" href="/s/img/favicon.png" type="image/x-icon">
 
-		<link rel="stylesheet" type="text/css"  media="screen" href="//fonts.googleapis.com/css?family=Open+Sans:300,400,600">
+<!--		<link rel="stylesheet" type="text/css"  media="screen" href="//fonts.googleapis.com/css?family=Open+Sans:300,400,600">-->
 		<link rel="stylesheet" type="text/css" media="screen" href="/s/styles/gen/client.css">
+
+		<script type="text/javascript">
+
+		var _gaq = _gaq || [];
+		_gaq.push(['_setAccount', 'UA-45130412-1']);
+		_gaq.push(['_trackPageview']);
+
+		(function() {
+			var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+			ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+		})();
+
+		</script>
 	</head>
 
-	<body>
+	<body class="role-guest mode-normal">
+		<!-- [if lt IE 9]>
+		<div class="ie-warning">
+			<div class="ie-warning-content">
+				<h1>Your browser isn’t supported :-(</h1>
+				<p>Please <a href="http://browsehappy.com">upgrade</a> to a modern browser.</p>
+			</div>
+		</div>
+		<![endif]-->
 		<section data-embed="none" class="room-area column">
 			<div class="room-header">
-				<img src="/s/img/client/scrollback-small.svg" alt="scrollback"/>
+				<a href="http://scrollback.io" target="_blank"><img src="/s/img/client/scrollback-small.svg" alt="scrollback"></a>
 			</div>
 
 			<div role="list" class="room-list hide-scroll">
-				<a class="room-item"><span class="room-name"></span><span class="unread"></span></a>
+				<a class="room-item"><span class="room-name"></span><span class="notif-counter unread"></span></a>
 			</div>
 		</section>
 		<section class="meta-area column">
@@ -58,7 +77,7 @@
 						<path d="M 5.199999,4.0000001 C 2,4.0000001 2,4.0000001 2,7.3328459 L 2,17.331384 C 2,20.664241 2,21.664 5.199999,21.664 L 10,21.664 c 4.2544,4.447679 4.247999,4.447679 8,0 l 4.8,0 c 3.2,0 3.2,-0.999759 3.2,-4.332616 L 26,7.3328459 C 26,4.0000001 26,4.0000001 22.8,4.0000001 l -17.600001,0 M 6,8 18,8 18,10 6,10 m 4,2 12,0 0,2 -12,-0.0015 M 6,16 l 12,0 0,2 -12,0"/>
 					</svg>
 				</li>
-				<li role="tab" data-mode="search" class="tab tab-search-local"><h3>This room</h3></li>
+				<li data-mode="search" class="meta-header"><h3 class="search-caption">This room</h3></li>
 				<!-- <li role="tab" data-mode="search" class="tab tab-search-global"><h3>All rooms</h3></li> -->
 				<li data-mode="conf" class="meta-header"><h3>Room settings</h3></li>
 				<li data-mode="pref" class="meta-header"><h3>Account settings</h3></li>
@@ -76,17 +95,17 @@
 					</a>
 				</div>
 				<div role="tabpanel" class="pane pane-threads">
-					<!-- <div data-mode="search" class="thread-search-query"></div> -->
-					<div data-mode="normal" class="thread-all-conversations">
-						<div class="thread-item current" href="" id="thread-">
+					<div class="pane-threads-wrap">
+						<!-- <div data-mode="search" class="thread-search-query"></div> -->
+						<div data-mode="normal" class="thread-item thread-all-conversations current" href="" id="thread-">
 							<h4 class="thread-title">All conversations</h4>
 							<p class="thread-snippet"></p>
 						</div>
-					</div>
-					<div class="thread-item-container hide-scroll">
-						<div class="thread-item" href="">
-							<h4 class="thread-title"></h4>
-							<p class="thread-snippet"></p>
+						<div class="thread-item-container hide-scroll">
+							<div class="thread-item" href="">
+								<h4 class="thread-title"></h4>
+								<p class="thread-snippet"></p>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -99,13 +118,17 @@
 				<a class="list-item"></a>
 			</div>
 		</section>
-		<section role="main" class="main-area column">
+		<main role="main" class="main-area column">
 			<div data-mode="normal search conf pref" class="title-bar">
 				<div class="left-area">
 					<a class="meta-button">
-						<span data-embed="toast full" class="meta-button-logo">
-							<svg class="meta-icon sb-icon" width="28" height="28" viewBox="0 0 28 28">
-								<use xlink:href="/s/img/client/icons/scrollback.svg#icon"></use>
+						<span data-embed="toast canvas" class="meta-button-logo">
+							<svg class="meta-icon" width="28" height="28" viewBox="0 0 28 28">
+								<path d="m 14.000045,1020.3622 -10.000045,10 5.664746,0 4.335208,-4.3664 4.335305,4.3664 5.664766,0 z" width="524.41" height="372.05" transform="matrix(0.9999986,0,0,0.9999986,8.5999958e-6,-1020.3608)" class="sb-icon-top"/>
+								<g class="sb-icon-bottom">
+									<path d="m 4,11.999803 0,3.999994 19.999972,0 0,-3.999994 z"/>
+									<path d="m 14.000043,1048.3622 -10.000046,-10 5.664746,0 4.335208,4.3664 4.335305,-4.3664 5.664766,0 z" width="524.41" height="372.05" transform="matrix(0.9999986,0,0,0.9999986,8.5999958e-6,-1020.3608)"/>
+								</g>
 							</svg>
 						</span>
 						<span class="meta-button-back">
@@ -114,33 +137,28 @@
 							</svg>
 						</span>
 					</a>
-					<h2 data-mode="normal search" class="room-title" id="room-title"></h2>
+					<h2 data-mode="normal" data-embed="none" class="room-title" id="room-title"></h2>
 					<a data-mode="normal" data-role="user" class="follow-button follow-room-action" role="button">
 						<svg class="follow-icon" width="28" height="28" viewBox="0 0 28 28">
 							<use xlink:href="/s/img/client/icons/follow.svg#icon"></use>
 						</svg>
 					</a>
-					<div data-mode="conf pref" class="action-buttons">
-						<a class="button conf-save">Done</a>
-						<a class="button secondary conf-cancel">Cancel</a>
+					<div data-mode="conf pref search" class="action-buttons">
+						<a data-mode="search" class="button search-back"></a>
+						<a data-mode="conf pref" class="button conf-save">Done</a>
+						<a data-mode="conf pref" class="button secondary conf-cancel">Cancel</a>
 					</div>
 				</div>
 				<div data-mode="normal search" class="right-area">
-					<a data-embed="none" data-tooltip="Search" class="search-button" role="button">
+
+					<a data-mode="normal" data-tooltip="Search" class="search-button" role="button">
 						<svg class="search-icon" width="28" height="28" viewBox="0 0 28 28">
 							<use xlink:href="/s/img/client/icons/search.svg#icon"></use>
 						</svg>
 					</a>
-					<div class="user-area">
-						<div class="user-detail cta-area">
-							<div id="sb-user"></div>
-							<div data-role="guest" class="sign-in cta-action">Sign in</div>
-						</div>
-						<div class="user-avatar">
-							<img alt="" id="sb-avatar" >
-						</div>
-					</div>
-					<div data-embed="toast full" class="embed-area">
+
+<!--
+					<div class="embed-area">
 						<div data-role="user" class="follow-room-action cta-area">
 							<div>Stay connected</div>
 							<div class="cta-action">Follow room</div>
@@ -149,11 +167,28 @@
 							<div>Browse archives</div>
 							<div class="cta-action">Visit room</div>
 						</div>
-						<a data-role="user" class="embed-button user-menu-button" role="button">
-							<svg class="embed-icon user-menu-icon" width="28" height="28" viewBox="0 0 28 28">
-								<use xlink:href="/s/img/client/icons/more.svg#icon"></use>
+					</div>
+-->
+					<div data-embed="toast canvas" class="embed-area">
+						<div data-embed="toast" class="embed-action-minimize embed-button">
+							<svg class="minimize-icon embed-icon" width="28" height="28" viewBox="0 0 28 28">
+								<use xlink:href="/s/img/client/icons/minimize.svg#icon"></use>
 							</svg>
-						</a>
+						</div>
+						<div class="embed-action-fullview embed-button">
+							<svg class="fullview-icon embed-icon" width="28" height="28" viewBox="0 0 28 28">
+								<use xlink:href="/s/img/client/icons/fullview.svg#icon"></use>
+							</svg>
+						</div>
+					</div>
+					<div class="user-area">
+						<div data-embed="none" class="user-detail cta-area">
+							<div id="sb-user"></div>
+							<div data-role="guest" class="sign-in cta-action">Sign in</div>
+						</div>
+						<div class="user-avatar">
+							<img alt="" id="sb-avatar" >
+						</div>
 					</div>
 				</div>
 			</div>
@@ -161,10 +196,11 @@
 				<div class="chat-position"></div>
 				<div class="chat-area hide-scroll">
 					<p class="chat-item">
+						<span class="chat-item-dot"></span>
 						<span class="chat-nick"></span>
 						<span class="chat-message"></span>
 						<span class="chat-timestamp"></span>
-						 <span class="chat-more"></span> 
+						 <span class="chat-more"></span>
 					</p>
 				</div>
 			</div>
@@ -174,6 +210,9 @@
 			</div>
 			<div data-mode="normal search" class="chat-input">
 				<div class="chat-entry-wrap">
+					<div class="chat-conv-dot-wrap">
+						<span class="chat-conv-dot"></span>
+					</div>
 					<div class="chat-placeholder"></div>
 					<div role="textbox" class="chat-entry" contenteditable></div>
 				</div>
@@ -181,63 +220,42 @@
 					<use xlink:href="/s/img/client/icons/send.svg#icon"></use>
 				</svg>
 			</div>
-		</section>
+		</main>
 		<section class="search-bar">
 			<form>
 				<input class="search-entry" type="search" placeholder="Type to search...">
 			</form>
 		</section>
-		<section data-mode="noroom" class="noroom-area">
-			<div class="noroom-container">
-				<h1>This room does not exist yet :(</h1>
-				<p data-role="guest">You need to sign in to create a room</p>
+		<section data-mode="noroom offline profile" class="content-view-wrapper">
+			<div data-mode="noroom" class="content-view-area">
+				<h1>This room does not exist yet :-(</h1>
+				<p data-role="guest">You need to sign in first to create a room</p>
 				<p>
-					<a data-role="user" class="button create-room-button" id="create-room-button">Create room</a>
-					<a data-role="guest" class="button login-and-create-room-button"  id="login-and-create-room-button">Sign in</a>
+					<a data-role="user" class="button" id="noroom-view-create">Create room</a>
+					<a data-role="guest" class="button"  id="noroom-view-login">Sign in</a>
 				</p>
+			</div>
+			<div data-mode="profile" class="content-view-area">
+				<h1>Who is <span id="profile-view-name"></span>?</h1>
+				<p>Profiles are coming soon!</p>
 			</div>
 		</section>
 		<section data-embed="toast" class="minimize-bar">
 			<div class="minimize-bar-button minimize-logo">
-				<svg class="minimize-bar-icon sb-icon" width="28" height="28" viewBox="0 0 28 28">
-					<use xlink:href="/s/img/client/icons/scrollback.svg#icon"></use>
+				<svg class="minimize-bar-icon" width="28" height="28" viewBox="0 0 28 28">
+					<path d="m 14.000045,1020.3622 -10.000045,10 5.664746,0 4.335208,-4.3664 4.335305,4.3664 5.664766,0 z" width="524.41" height="372.05" transform="matrix(0.9999986,0,0,0.9999986,8.5999958e-6,-1020.3608)" class="sb-icon-top"/>
+					<g class="sb-icon-bottom">
+						<path d="m 4,11.999803 0,3.999994 19.999972,0 0,-3.999994 z"/>
+						<path d="m 14.000043,1048.3622 -10.000046,-10 5.664746,0 4.335208,4.3664 4.335305,-4.3664 5.664766,0 z" width="524.41" height="372.05" transform="matrix(0.9999986,0,0,0.9999986,8.5999958e-6,-1020.3608)"/>
+					</g>
 				</svg>
 			</div>
 			<div class="minimize-room-title"></div>
 			<div class="minimize-ticker"></div>
 		</section>
-		<section class="overlay">
-			<h1>Warming up...</h1>
-		</section>
-		<section class="progress loading">
-		</section>
+		<aside class="progress loading"></aside>
 
 		<!-- templates -->
-		<script type="text/template" id="login-menu">
-			<div data-role="guest" class="login-menu">
-				<div class="popover-title popover-section">Sign in to scrollback with</div>
-				<div class="popover-buttons popover-section">
-					<a class="button facebook">Facebook</a>
-					<a class="button persona">Persona</a>
-				</div>
-			</div>
-		</script>
-
-		<script type="text/template" id="user-menu">
-			<ul data-role="user" class="user-menu">
-				<li><a class="userpref">Account settings</a></li>
-				<li><a class="reportissue" target="_blank" href="https://github.com/scrollback/scrollback/issues">Report an issue</a></li>
-				<li><a class="logout">Sign out</a></li>
-			</ul>
-		</script>
-
-		<script type="text/template" id="chat-menu">
-			<ul class="chat-menu">
-				<li><a class="tweetmsg">Tweet message</a></li>
-				<li><a class="hidemsg">Hide message</a></li>
-			</ul>
-		</script>
-
 		<script type="text/template" id="signup-dialog">
 			<div class="signup-dialog">
 				<h1>Choose a username</h1>
@@ -245,14 +263,6 @@
 					<input type="text" id="signup-id" name="username" placeholder="Enter username" autofocus><br/>
 					<input class="signup-save" type="button" value="Create account">
 			</form>
-			</div>
-		</script>
-
-		<script type="text/template" id="signin-dialog">
-			<div data=role="guest" class="signin-dialog">
-				<h1>Sign in to scrollback with</h1>
-				<a class="button facebook modal-remove">Facebook</a>
-				<a class="button persona modal-remove">Persona</a>
 			</div>
 		</script>
 
@@ -268,21 +278,17 @@
 		<script>window.jQuery || document.write('<script src="/s/lib/jquery.min.js"><\/script>');</script>
 
 		<!--[if IE]>
-		<script src="/s/lib/selectivizr-min.js"
-		<script src="/s/lib/transformie.min.js"></script>
-		<script src="/s/lib/flexie.min.js"></script>
+		<script src="/s/lib/polyfills.js"></script>
 		<![endif]-->
 
-		<script src="/s/lib/svg4everybody.min.js"></script>
-
-		<script src="/sdk/sockjs.js"></script>
-		<script src="/client.bundle.js"></script>
+		<script src="/client.bundle.min.js"></script>
 		<script>libsb.connect();</script>
 		<script src="https://login.persona.org/include.js"></script>
-		<script>(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-			ga('create', 'UA-45130412-1', 'scrollback.io');
-			ga('send', 'pageview');
-		</script>
-		<script>document.addEventListener && document.addEventListener("touchstart", function() {}, true);</script>
+
+		<!-- SEO -->
+		<div style="position: absolute; top: -9999em; left: -9999em;">
+			<!-- Messages start here. -->
+			<!--Messages end here-->
+		</div>
 	</body>
 </html>

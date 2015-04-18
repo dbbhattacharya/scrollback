@@ -1,4 +1,3 @@
-var core;
 var config = require('../config.js');
 var log  = require('../lib/logger.js');
 var pg = require('pg');
@@ -9,25 +8,25 @@ var occupantActions = ['back', 'away'];
 var memberActions = ['join', 'part', 'admit', 'expel'];
 
 
+
 module.exports = function(core) {
 	textActions.forEach(function(type) {
 		core.on(type, function(action, cb) {
-			log("type:", action);
-			saveTextActions(action);
 			cb();
-		}, "watcher");	
+			saveTextActions(action);
+		}, "watcher");
 	});
-	
+
 	core.on('room', function(room, cb) {
 		cb();
-		saveRoomUserActions(room.room);
+		saveRoomUserActions(room);
 	}, "watcher");
-	
+
 	core.on('user', function(user, cb) {
 		cb();
-		saveRoomUserActions(user.user);
+		saveRoomUserActions(user);
 	}, "watcher");
-	
+
 	core.on('init', function(init, cb) {
 		cb();
 		saveSessionActions(init);
@@ -38,6 +37,12 @@ module.exports = function(core) {
 			saveMembersAction(action);
 		}, "watcher");
 	});
+    occupantActions.forEach (function(a) {
+        core.on(a, function(action, cb) {
+            cb();
+            saveOccupantAction(action);
+        }, "watcher");
+    });
 };
 
 function saveOccupantAction(action) {
@@ -57,29 +62,26 @@ function saveSessionActions(action) {
 	var pav = getParamsAndValues(action);
 	var params = pav.params;
 	var values = pav.values;
-	var list = ['suggestedNick'];
-	list.forEach(function(p) {
-		if (action[p]) {
-			params.push(p);
-			values.push(action[p]);
-		}
-	});
+	if(action.suggestedNick) {
+		params.push("suggestednick");
+		values.push(action.suggestedNick);
+	}
 	if (action.auth && Object.keys(action.auth)[0]) {
 		var a = Object.keys(action.auth)[0];
-		params.push("authApp");
-		params.push("authData");
+		params.push("authapp");
+		params.push("authdata");
 		values.push(a);
 		values.push(action.auth[a]);
 	}
 	if (action.origin) {
-		list = ['gateway', 'client', 'server', 'domain', 'path'];
+		var list = ['gateway', 'client', 'server', 'domain', 'path'];
 		list.forEach(function(p) {
 			if (action.origin[p]) {
 				params.push(p);
 				values.push(action.origin[p]);
 			}
 		});
-		
+
 	}
 	insert("session_actions", params, values);
 }
@@ -92,12 +94,12 @@ function saveMembersAction(action) {
 	var list = ['text', 'ref', 'to', 'role', 'transitionRole', 'transitionType'];
 	list.forEach(function(p) {
 		if (action[p]) {
-			params.push(p);
+			params.push(p.toLowerCase());
 			values.push(action[p]);
 		}
 	});
 	if (action.transitionTime) {
-		params.push(transitionTime);
+		params.push("transitiontime");
 		values.push(new Date(action.transitionTime));
 	}
 	insert("member_actions", params, values);
@@ -113,14 +115,18 @@ function saveTextActions(action) {
 	values.push(action.text);
 	params.push('to');
 	values.push(action.to);
+	if (action.ref) {
+		params.push("ref");
+		values.push(action.ref);
+	}
 	if (action.mentions) {
 		params.push('mentions');
 		values.push(action.mentions);
 	}
 	if (action.threads) {
 		params.push('threads');
-		params.push('threadTitles');
-		params.push('threadScores');
+		params.push('threadtitles');//threadTitles
+		params.push('threadscores');
 		var threads = [];
 		var threadTitles = [];
 		var threadScores = [];
@@ -137,12 +143,14 @@ function saveTextActions(action) {
 		var labels = [];
 		var labelScores = [];
 		for(var l in action.labels) {
-			if (action.labels.hasOwnProperity(l)) {
+			if (action.labels.hasOwnProperty(l)) {
 				labels.push(l);
 				labelScores.push(action.labels[l]);
 			}
 		}
-		params.push(labels);
+		params.push("labels");
+		values.push(labels);
+		params.push("labelscores");
 		values.push(labelScores);
 	}
 	insert("text_actions", params, values);
@@ -154,26 +162,31 @@ function saveRoomUserActions(action) {
 	var pav = getParamsAndValues(action);
 	var params = pav.params;
 	var values = pav.values;
+	var type = action.type;
 	params.push("creation");
-	if (action.old.id) values.push(true);			
-	else values.push(false);
+	if (action.old && action.old.id) values.push(false);
+	else values.push(true);
 	params.push("description");
-	values.push(action.description);
-	var list = ['picture', 'timezone', 'identities', 'to'];
+	values.push(action[type].description);
+	params.push("to");
+	values.push(action.to);
+	var list = ['picture', 'timezone', 'identities'];
 	list.forEach(function(p) {
-		if (action[p]) {
+		if (typeof action[type][p] !== 'undefined') {
 			params.push(p);
-			values.push(action[p]);
+			values.push(action[type][p]);
 		}
 	});
 	params.push("params");
-	values.push(JSON.stringify(action.params));
+	values.push(JSON.stringify(action[type].params));
+	params.push("guides");
+	values.push(JSON.stringify(action[type].guides));
 	insert("user_room_actions", params, values);
 }
 
 function getParamsAndValues(action) {
-	var params = ['id', 'type','from', 'time', 'session', 'resource', 'success' ];
-	var values = [action.id, action.type, action.to, new Date(action.time), action.session, action.resource, true];
+	var params = ['id', 'type', 'from', 'time', 'session', 'resource', 'success' ];
+	var values = [action.id, action.type, action.from, new Date(action.time), action.session, action.resource, true];
 	return {
 		params: params,
 		values: values
@@ -194,11 +207,9 @@ function insert(tableName, params, values) {
 			return;
 		}
 		client.query(q, values, function(e, result) {
-		log("Error:", e, " result: ", result);
-			if (e) {
-				log("Unable to run query: ", q, values);
-			}
-			done();	
+			log(" result: ", result);
+			if (e) log("Unable to run query: ", e, q, values);
+			done();
 		});
 	});
 }

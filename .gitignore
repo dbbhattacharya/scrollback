@@ -21,10 +21,17 @@ data
 results
 
 node_modules
+bower_components
 
 myConfig.js
+client-config.js
 
 public/*.bundle.js
 public/*.min.js
 public/embed.js
 public/s/styles/gen
+public/s/lib
+ircClient/Data
+xunit.xml
+public/t/coverage-*.html
+/ircClient/myConfig.js

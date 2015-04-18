@@ -8,6 +8,7 @@ $(function(){
 	$(document).click('.chat-area', function(event){
 		var elem = $(event.target).closest('.chat-item').get(0);
 		var target = $(elem).find('.chat-more').get(0);
+		if(event.target !== target) return;
 		var messageId = elem ? elem.id : "";
 		var role = 'registered';
 		if(messageId){
@@ -20,10 +21,10 @@ $(function(){
 					}
 				});
 			}
-			libsb.emit('text-menu', {role: role, target: elem}, function(err, menu){
+			libsb.emit('text-menu', {origin: target, items: {}, role: role, target: elem}, function(err, menu){
 				delete menu.role;
 				delete menu.target;
-				showMenu({origin: target, items: menu});
+				showMenu(menu);
 			});
 		}
 	});

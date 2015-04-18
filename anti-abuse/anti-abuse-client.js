@@ -5,30 +5,30 @@ var formField = require("../lib/formField.js");
 
 libsb.on("config-show", function(tabs, next) {
 	var room = tabs.room, lists;
-	
+
 	if(!room.params) room.params = {};
     if (!room.params.antiAbuse) {
         room.params.antiAbuse = {offensive: true};
 	}
-    
+
     if (typeof room.params.antiAbuse.wordblock !== "boolean") {
 		room.params.antiAbuse.wordblock = true;
 	}
-    
+
 	if (!(room.params.antiAbuse["block-lists"] instanceof Array)) {
 		lists = [];
 	}else {
         lists = room.params.antiAbuse["block-lists"];
     }
-    
+
     if(!room.params.antiAbuse.customWords) room.params.antiAbuse.customWords = [];
 
 	var $div = $("<div>").append(
 		formField("Block offensive words", "toggle", "block-offensive", room.params.antiAbuse.wordblock),
 		formField("Blocked words list", "check", "blocklists-list", [
-			["list-en-strict", "English strict", (lists.indexOf("list-en-strict") > -1)],
-			["list-en-moderate", "English moderate", (lists.indexOf("list-en-moderate") > -1)],
-			["list-zh-strict", "Chinese strict", (lists.indexOf("list-zh-strict") > -1)]
+			["list-en-strict", "English abusive words", (lists.indexOf("list-en-strict") > -1)]
+			// ["list-en-moderate", "English moderate", (lists.indexOf("list-en-moderate") > -1)],
+			// ["list-zh-strict", "Chinese strict", (lists.indexOf("list-zh-strict") > -1)]
 		]),
 		formField("Custom blocked words", "area", "block-custom", room.params.antiAbuse.customWords)
 	);
@@ -57,34 +57,51 @@ libsb.on("config-save", function(room, next){
 }, 500);
 
 function hasLabel(label, labels){
-	for(var i=0; i<labels.length; i++){
-		if(labels[i] === label){
-			return true; 
+
+	for(var i in labels){
+		if(i === label && labels[i] === 1){
+			return true;
 		}
 	}
 	return false;
 }
+
 libsb.on('text-menu', function(menu, next) {
 	if(menu.role !== "owner") return next();
 	var textObj;
-	libsb.emit('getTexts', {ref: menu.target.id, to: currentState.roomName}, function(err, data){
+	libsb.emit('getTexts', {ref: menu.target.id.substring(5), to: currentState.roomName}, function(err, data){
 		textObj = data.results[0];
+		var target = menu.target;
+		var textMsg = $(target).find('.chat-message').text();
+
 		if(!hasLabel('hidden', textObj.labels)){
-			menu["Hide Message"] = function(){
-				libsb.emit('edit-up', {to: currentState.room, labels: {hidden: 1}, ref: menu.target.id, cookie: false});
-				$(menu.target).addClass('hidden');
+			menu.items.hidemessage = {
+				prio: 500,
+				text: 'Hide Message',
+				action: function(){
+					libsb.emit('edit-up', {to: currentState.roomName, labels: {'hidden': 1}, text: textMsg, ref: target.id.substring(5), cookie: false});
+					$(target).addClass('chat-label-hidden');
+				}
 			};
 		} else{
-			menu["Unhide Message"] = function(){
-				libsb.emit('edit-up', {to: currentState.room, labels: {hidden: 0}, ref: menu.target.id, cookie: false});
-				$(menu.target).removeClass('hidden');
+			menu.items.unhidemessage = {
+				prio: 500,
+				text: 'Unhide Message',
+				action: function(){
+					libsb.emit('edit-up', {to: currentState.roomName, labels: {'hidden': 0}, text: textMsg, ref: target.id.substring(5), cookie: false});
+					$(target).removeClass('chat-label-hidden');
+				}
 			};
 		}
 		if(hasLabel('abusive', textObj.labels)){
-			menu["Mark as Not Abusive"] = function(){
-				libsb.emit('edit-up', {to: currentState.room, labels: {abusive: 0}, ref: menu.target.id, cookie: false});	
+			menu.items.markasnotabusive = {
+				prio: 500,
+				text: 'Mark as not abusive',
+				action: function(){
+					libsb.emit('edit-up', {to: currentState.roomName, labels: {'abusive': 0}, text: textMsg, ref: target.id.substring(5), cookie: false});
+				}
 			};
 		}
+		next();
 	});
-	next();
 }, 500);

@@ -1,18 +1,17 @@
-var assert = require("assert");
-var config  = require('../config.js');
-var core = require("../lib/emitter.js");
+var config = require('../config.js');
+var core = new (require('../lib/emitter.js'))();
 var ircSb = require("./irc.js");
 var gen = require("../lib/generate.js");
 var irc = require('irc');
 var guid = gen.uid;
-var names = gen.names;
 var client;
 var testingServer = "dev.scrollback.io";
 var botName = require('../ircClient/config.js').botNick;
+
 /**
  * All test cases should run in sequence
  * Do not change the order of test cases.
- * 
+ * some test cases are based on timeouts so might fail on slow network. 
  */
 var users = [
 	{
@@ -27,7 +26,8 @@ var users = [
 var rooms = [{
 	id: "scrollback",
 	type: "room",
-	params: {
+	identities: [],
+    params: {
 		irc: {
 			server: testingServer,
 			channel: "#scrollback",
@@ -38,33 +38,36 @@ var rooms = [{
 } ,{
 	id: "testingroom",
 	type: "room",
+    identities: [],
 	params: {
 		irc: {
 			server: testingServer,
-			channel: "#testingroom",
+			channel: "#TEstingroom",
 			enabled: true,
 			pending: false
 		}
 	}}
 ];
-describe('connect new IRC channel', function() {//this will connect 2 rooms scrollback and testingroom
+describe('IRC test: ', function() {//this will connect 2 rooms scrollback and testingroom
 	before( function(done) {
 		this.timeout(5*40000);
-		core.on('getUsers', function(v, callback) {
+        core.on('getUsers', function(v, callback) {
 			v.results = users;
 			callback(null, v);
-		});
+		}, 500);
 		core.on("getRooms", function(q, callback) {
-			q.results = rooms;
+			console.log("query", q);
+			if(q.identity && q.identity.length === 3) q.results = rooms;
+			else q.results = [];
 			callback(null, q);
-		});
+		}, 500);
 		core.on('init', function(init, callback) {
 			init.user = {
 				id: "c" + init.suggestedNick,
 				type: "user"
 			};
 			callback(init);
-		});
+		}, 500);
 		core.on('text', function(text, callback) {
 			console.log("text called irc test:", text);
 			text.room = rooms[0];
@@ -132,11 +135,11 @@ describe('connect new IRC channel', function() {//this will connect 2 rooms scro
 		this.timeout(1000*60);//1 min
 		var msg = guid();
 		core.on('text', function(text, callback) {
-			if (text.type === 'text' && text.from == "c" + client.nick && text.to === "scrollback" && text.text === "this is testing message id=" + msg) {
+			if (text.from == "c" + client.nick && text.to === "scrollback" && text.text === "this is testing message id=" + msg) {
 				done();
 			}
 			callback();
-		});
+		}, 500);
 		client.say("#scrollback", "this is testing message id=" + msg);
 		
 	});
@@ -167,24 +170,22 @@ describe('connect new IRC channel', function() {//this will connect 2 rooms scro
 		core.emit("room", {
 			type: "room",
 			session: "web://somesession",
+			user: {id: "superuser", role: 'su'},//run test as superuser
 			room: {
+                identities: [],
 				id: "testingroom2",
 				params: {
 					irc: {
 						server: testingServer,
-						channel: "#testingroom2",
+						channel: "#Testingroom2",
 						pending: false,
 						enabled: true
 					}
 				}
 			}
 		}, function(err, room) {
-			console.log("room is connected now");
-			
-			//done();
+			console.log("room is connected now", err, room);
 		});
-		
-		
 	});
 	
 	
@@ -204,9 +205,10 @@ describe('connect new IRC channel', function() {//this will connect 2 rooms scro
 			go();
 		});
 		core.emit("room", {
-			
 			type: "room",
+			user: {id: "superuser", role: 'su'},//run test as superuser
 			room: {
+                identities: [],
 				id: "testingroom2",
 				params: {
 					irc: {
@@ -245,20 +247,21 @@ describe('connect new IRC channel', function() {//this will connect 2 rooms scro
 		this.timeout(60 * 1000);
 		var c = 0;
 		client.on("part", function(channel, nick, reason, message) {
-			if(nick === "scrollback") c++;
+			if(nick.indexOf(botName) != -1) c++;
 			go();
 		});
 		client.on("quit", function(channel, nick, reason, message) {
-			if(nick === "scrollback") c++;
+			if(nick.indexOf(botName) !== -1) c++;
 			go();
 		});
 		function go() {
 			if (c === 6) {
-				done();
+				setTimeout(done, 3000);//Bot diconnection will take some time.
 			}
 		}
 		core.emit("room", {
 			type: "room",
+			user: {id: "superuser", role: 'su'},//run test as superuser
 			old: {
 				id: "testingroom2",
 				params: {
@@ -271,6 +274,7 @@ describe('connect new IRC channel', function() {//this will connect 2 rooms scro
 				}
 			},
 			room: {
+                identities: [],
 				id: "testingroom2",
 				type: "room",
 				params: {
@@ -292,6 +296,7 @@ describe('connect new IRC channel', function() {//this will connect 2 rooms scro
 		
 		core.emit("room", {
 			type: "room",
+			user: {id: "superuser", role: 'su'},//run test as superuser
 			old: {
 				id: "scrollback",
 				params: {
@@ -304,6 +309,7 @@ describe('connect new IRC channel', function() {//this will connect 2 rooms scro
 				}
 			},
 			room: {
+                identities: [],
 				id: "scrollback",
 				type: "room",
 				params: {
@@ -324,6 +330,7 @@ describe('connect new IRC channel', function() {//this will connect 2 rooms scro
 		});
 		core.emit("room", {
 			type: "room",
+			user: {id: "superuser", role: 'su'},//run test as superuser
 			old: {
 				id: "testingroom",
 				params: {
@@ -338,6 +345,7 @@ describe('connect new IRC channel', function() {//this will connect 2 rooms scro
 			room: {
 				id: "testingroom",
 				type: "room",
+                identities: [],
 				params: {
 					irc: {
 						server: "",
@@ -362,7 +370,7 @@ describe('connect new IRC channel', function() {//this will connect 2 rooms scro
 	it("Bot left the server", function(done) {
 		this.timeout(15 * 1000);
 		client.on("error", function(err) {
-			if (err.command === 'err_nosuchnick') {
+			if (err.command === 'err_nosuchnick' && err.args[1] === botName) {
 				done();
 			}
 			console.log("error:", err);
@@ -372,16 +380,20 @@ describe('connect new IRC channel', function() {//this will connect 2 rooms scro
 		});
 
 	});
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+    
+    it("User left the server", function(done) {
+		this.timeout(15 * 1000);
+		client.on("error", function(err) {
+			if (err.command === 'err_nosuchnick' && err.args[1] === "outuser0") {
+				done();
+			}
+			console.log("error:", err);
+		});
+		client.whois("outuser0", function(info) {
+			console.log("whois", info);
+		});
+
+	});
+    
 
 });

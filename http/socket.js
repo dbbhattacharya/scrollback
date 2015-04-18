@@ -25,12 +25,8 @@ Boston, MA 02111-1307 USA.
 /* global require, exports, setTimeout */
 
 var sockjs = require("sockjs"), core,
-	// api = require("./api.js"),
 	log = require("../lib/logger.js"),
-	config = require("../config.js"),
 	generate = require("../lib/generate.js");
-
-var internalSession = Object.keys(config.whitelists)[0];
 
 var rConns = {}, uConns = {}, sConns = {}, urConns = {};
 var sock = sockjs.createServer();
@@ -43,9 +39,11 @@ sock.on('connection', function (socket) {
 		catch(e) { log("ERROR: Non-JSON data", d); return; }
 
 		if (!d.type) return;
-		d.returned = "yes";
 		if(d.type == 'init' && d.session) {
-			if(d.session == internalSession) return;
+            if(!/^web:/.test(d.session)) {
+				return conn.send({type: 'error', id: d.id, message: "INVALID_SESSION"});
+            }
+			if(!conn.session) conn.listeningTo = [];
 			conn.session = d.session; // Pin the session and resource.
 			conn.resource  = d.resource;
 			if (!sConns[d.session]) {
@@ -61,7 +59,7 @@ sock.on('connection', function (socket) {
 			d.session = conn.session;
 			d.resource  = conn.resource;
 		}
-
+		
 		if(d.type == 'back') {
 			//just need for back as storeBack will be called before actionValidator
 			if(!d.to) {
@@ -82,14 +80,18 @@ sock.on('connection', function (socket) {
 		core.emit(d.type, d, function(err, data) {
 			var e, action;
 			if(err) {
-				e = {type: 'error', id: d.id, message: err.message};
+				e = err;
+				e.id = d.id;
+				e.type = 'error';
+				e.message = err.message;
+//				e = {type: 'error', id: d.id, message: err.message};
 				log("Sending Error: ", e);
 				return conn.send(e);
 			}
 			if(data.type == 'back') {
-				/* this is need because we dont have the connection object
+				/* this is needed because we dont have the connection object
 				of the user in the rconn until storeBack is called*/
-				conn.send(data);
+				conn.send(censorAction(data, "room"));
 				storeBack(conn, data);
 				return;
 			}
@@ -111,14 +113,17 @@ sock.on('connection', function (socket) {
 								break;
 							}
 						}
-						
+
 						data.user.role = role;
                         action = {id: generate.uid(), type: "back",to: e.id, from: data.user.id, session: data.session,user: data.user, room: e};
 						emit({id: generate.uid(), type: "away", to: e.id, from: data.old.id, user: data.old, room: e});
+
+						if(conn.listeningTo && conn.listeningTo.indexOf(e.id)>=0) {
+							if(verifyBack(conn, action)) emit(action);
+                        	storeBack(conn, action);
+						}
                         
-                        storeBack(conn, action);
-                        if(verifyBack(conn, action)) emit(action);
-					});	
+					});
 				}
 				storeInit(conn, data);
 			}
@@ -126,11 +131,6 @@ sock.on('connection', function (socket) {
 			if(['getUsers', 'getTexts', 'getRooms', 'getThreads'].indexOf(data.type)>=0){
 				conn.send(data);
 			}
-
-			/* no need to send it back to the connection object when no error,
-                emit function will take care of that.
-				conn.send(data);
-			 */
 		});
 	});
 
@@ -147,37 +147,49 @@ function processUser(conn, user) {
 }
 function storeInit(conn, init) {
 	if(!uConns[init.user.id]) uConns[init.user.id] = [];
-	sConns[init.session].forEach(function(c) {
-		var index;
-		if(init.old && init.old.id) {
-			index = uConns[init.old.id].indexOf(c);
-			uConns[init.old.id].splice(index, 1);
-		}
+	if(uConns[init.user.id].indexOf(conn)<0) uConns[init.user.id].push(conn);
+	
+	if(init.old && init.old.id) {
+		sConns[init.session].forEach(function(c) {
+			var index;
 
-		uConns[init.user.id].push(c);
+				if(uConns[init.old.id]) {
+					index = uConns[init.old.id].indexOf(c);
+					uConns[init.old.id].splice(index, 1);
+				}
+				init.occupantOf.forEach(function(room) {
+					if(urConns[init.old.id+":"+room.id]) {
+						index = urConns[init.old.id+":"+room.id].indexOf(c);
+						urConns[init.old.id+ ":"+ room.id].splice(index, 1);
+						if(c.listeningTo.indexOf(room)>=0) {
+							if(!urConns[init.user.id+":"+room.id]) urConns[init.user.id+":"+room.id] = [];
+							if(urConns[init.user.id+":"+room.id].indexOf(c)<0) urConns[init.user.id+":"+room.id].push(c);
+						}
 
-		init.occupantOf.forEach(function(room) {
-			if(init.old) {
-				index = urConns[init.old.id+":"+room.id].indexOf(c);
-				urConns[init.old.id+ ":"+ room.id].splice(index, 1);
-			}
-			if(!urConns[init.user.id+":"+room.id]) urConns[init.user.id+":"+room.id] = [];
-			if(urConns[init.user.id+":"+room.id].indexOf(c)<0) urConns[init.user.id+":"+room.id].push(c);
+					}
+				});
 		});
-	});
+	}
+
 }
 
 function storeBack(conn, back) {
 	if(!rConns[back.to]) rConns[back.to] = [];
-	if(!sConns[back.session]) sConns[back.session] = [];
 	if(!urConns[back.from+":"+back.to]) urConns[back.from+":"+back.to] = [];
 	if(!uConns[back.from]) uConns[back.from] = [];
 	if(rConns[back.to].indexOf(conn)<0) rConns[back.to].push(conn);
 	if(urConns[back.from+":"+back.to].indexOf(conn)<0) urConns[back.from+":"+back.to].push(conn);
+    if(!conn.listeningTo) conn.listeningTo = [];
+	if(conn.listeningTo.indexOf(back.to)<0) {
+		conn.listeningTo.push(back.to);	
+	}
+    
+//    console.log("LOG:"+ back.from +" got back from :"+back.to);
 }
 
 
 function storeAway(conn, away) {
+    var index;
 	delete urConns[away.from+":"+away.to];
 	if (sConns[away.session] && !sConns[away.session].length) {
 		delete sConns[away.session];
@@ -186,6 +198,10 @@ function storeAway(conn, away) {
 		delete uConns[away.session];
 	}
 	if(urConns[away.from+":"+away.to]) delete urConns[away.from+":"+away.to];
+    if(conn.listeningTo) {
+        index = conn.listeningTo.indexOf(away.to);
+        if(index>=0)conn.listeningTo.splice(index, 1);
+    }
 }
 
 exports.initServer = function (server) {
@@ -208,30 +224,15 @@ exports.initCore = function(c) {
 	core.on('text', emit,"gateway");
 };
 
-function emit(action, callback) {
+function censorAction(action, filter) {
     var outAction = {}, i, j;
-    log("Sending out: ", init);
-    function dispatch(conn, action) {conn.send(action); }
-    
-    if(action.type == 'init') {		
-		if(sConns[action.session]) {
-            sConns[action.session].forEach(function(conn) {
-                conn.user = action.user;
-                dispatch(conn);
-            });
-        }
-        return callback();
-	} else if(action.type == 'user') {
-		uConns[action.from].forEach(dispatch);
-        return callback();
-	}
-    
+
     for (i in action) {
         if(action.hasOwnProperty(i)) {
-            if(i == "room" || i == "user") { 
+            if(i == "room" || i == "user") {
                 outAction[i] = {};
-                for (j in action) {
-                    if(action.hasOwnProperty(j) && !j == "params") {
+                for (j in action[i]) {
+                    if(action[i].hasOwnProperty(j)) {
                         outAction[i][j] = action[i][j];
                     }
                 }
@@ -240,49 +241,92 @@ function emit(action, callback) {
             }
         }
     }
-    
-    delete outAction.session;
-    delete outAction.user.identities;
-    action = outAction;
-    
-    if(rConns[action.to]){
-        rConns[action.to].forEach(dispatch);
+
+    if(filter == 'both' || filter == 'user') {
+        outAction.user = {
+            id: action.user.id,
+            picture: action.user.picture,
+            createTime: action.user.createTime,
+            role: action.user.role,
+            type: 'user'
+        };
+		delete outAction.session;
     }
+
+    if(filter == 'both' || filter == 'room') {
+        delete outAction.room.identities;
+        delete outAction.room.params;
+    }
+
+    return outAction;
+}
+
+function emit (action, callback) {
+    var outAction, myAction;
+    log("Sending out: ", action);
+    function dispatch(conn, a) {conn.send(a); }
+
+    if(action.type == 'init') {
+		if(sConns[action.session]) {
+            sConns[action.session].forEach(function(conn) {
+                conn.user = action.user;
+                dispatch(conn, action);
+            });
+        }
+        return callback();
+	} else if(action.type == 'user') {
+        if(uConns[action.from] && uConns[action.from].length) {
+            uConns[action.from].forEach(function(e) {
+                dispatch(e, action);
+            });
+        }
+        return callback();
+	}
+
+    outAction = censorAction(action, "both");
+    myAction = censorAction(action, "room");
+
+    if(rConns[action.to]) {
+        rConns[action.to].forEach(function(e) {
+            if(e.session == action.session) {
+                if(action.type == "room") dispatch(e, action);
+                else dispatch(e, myAction);
+            }
+            else {dispatch(e, outAction);}
+        });
+    }
+
 	if(callback) callback();
 }
 
 function handleClose(conn) {
 	if(!conn.session) return;
 	core.emit('getUsers', {ref: "me", session: conn.session}, function(err, sess) {
-
+		var user;
 		if(err || !sess || !sess.results) {
 			log("Couldn't find session to close.", err, sess);
 			return;
 		}
-		var user = sess.results[0];
+		user = sess.results[0];
 		setTimeout(function() {
-			core.emit('getRooms', {hasOccupant: user.id, session: conn.session}, function(err, rooms) {
-				if(err || !rooms ||!rooms.results) {
-					log("couldnt find his rooms: away message not sent:", err, rooms);
-					return;
-				}
+            if(!conn.listeningTo || !conn.listeningTo.length) return;
 
-				rooms.results.forEach(function(room) {
-					var awayAction = {
-						from: user.id,
-						session: conn.session,
-						type:"away",
-						to: room.id,
-						time: new Date().getTime()
-					};
-					
-					if(!verifyAway(conn, awayAction)) return;
-					core.emit('away',awayAction , function(err, action) {
-						if(err) return;
-						storeAway(conn, action);
-					});
-				});
-			});
+            conn.listeningTo.forEach(function(room) {
+                var awayAction = {
+                    from: user.id,
+                    session: conn.session,
+                    type:"away",
+                    to: room,
+                    time: new Date().getTime()
+                };
+				
+                if(!verifyAway(conn, awayAction)) return;
+                core.emit('away',awayAction , function(err, action) {
+                    if(err) return;
+                    storeAway(conn, action);
+                });
+
+            });
 		}, 30*1000);
 	});
 }
@@ -291,19 +335,20 @@ function verifyAway(conn, away) {
 	var index;
 	if(rConns[away.to]) {
 		index = rConns[away.to].indexOf(conn);
-		rConns[away.to].splice(index,1);
+		if(index >=0) rConns[away.to].splice(index,1);
 	}
 	if(sConns[conn.session]) {
 		index = sConns[conn.session].indexOf(conn);
-		sConns[conn.session].splice(index,1);
+		if(index >=0) sConns[conn.session].splice(index,1);
 	}
 	if(uConns[away.from]) {
 		index = uConns[away.from].indexOf(conn);
-		uConns[away.from].splice(index,1);
+		if(index >=0) uConns[away.from].splice(index,1);
 	}
 	if(urConns[away.from+":"+away.to]) {
 		index = urConns[away.from+":"+away.to].indexOf(conn);
-		urConns[away.from+":"+away.to].splice(index,1);
+		if(index >=0) urConns[away.from+":"+away.to].splice(index,1);
+        // console.log("LOG: "+ away.from +"Connections still available: ", urConns[away.from+":"+away.to].length);
 		return (urConns[away.from+":"+away.to].length===0);
 	}else{
 		return true;
